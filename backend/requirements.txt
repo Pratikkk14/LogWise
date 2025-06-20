@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+google-cloud-logging
+pydantic
+python-dotenv
