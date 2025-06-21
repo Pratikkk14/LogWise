@@ -3,10 +3,12 @@
 # Ignore Python cache and environment files
 __pycache__/
 *.pyc
-.env
+
+#ignore .env files
+backend/.env
 
 # Ignore service account keys
-backend/service_accounts/
+backend/service-accounts/
 
 # Ignore virtual environment
 venv/
