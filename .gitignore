@@ -8,7 +8,7 @@ __pycache__/
 backend/.env
 
 # Ignore service account keys
-backend\accounts\
+backend/accounts/
 
 # Ignore virtual environment
 venv/
