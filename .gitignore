@@ -6,7 +6,7 @@ __pycache__/
 
 #ignore .env files
 backend/.env
-
+frontend/.env
 # Ignore service account keys
 backend/accounts/
 
