@@ -1,12 +1,19 @@
-# 📂 Project Folder Structure
-```bash
 logwise/
 ├── backend/
-│   ├── main.py                # FastAPI app
-│   ├── gcp_logs.py            # Logging API logic
-│   ├── llm_explainer.py       # OpenAI/Gemini integration
-│   ├── session_manager.py     # Save/load investigations
-│   └── requirements.txt
+│   ├── main.py                  # Entry point: FastAPI app, loads routers
+│   ├── routes/
+│   │   ├── logs.py              # /logs endpoint logic
+│   │   └── explain.py           # /explain endpoint logic
+│   ├── services/
+│   │   ├── gcp_logging.py       # GCP log fetching logic
+│   │   └── llm_explainer.py     # Gemini LLM logic
+│   ├── models/
+│   │   └── schemas.py           # Pydantic models for request/response
+│   ├── utils/
+│   │   └── session_manager.py   # (Optional) Save/load past investigations
+│   ├── .env                     # Env vars like API keys
+│   ├── requirements.txt         # Updated dependency list
+│   └── README.md                # Backend-specific README (optional)
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
@@ -18,9 +25,6 @@ logwise/
 │   │   │   ├── LogTable.tsx
 │   │   │   └── ExplainPanel.tsx
 │   │   └── App.tsx
-│   └── tailwind.config.js
+│   ├── tailwind.config.js
 │   └── package.json
-├── README.md
-```
-# LogWise
-A Logging platform that will help developer in efficient logging of the gcp
+├── README.md                    # Project-level README
