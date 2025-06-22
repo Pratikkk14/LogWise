@@ -6,7 +6,7 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=api_key) # type: ignore
 
-print("🔑 GEMINI_API_KEY =", os.getenv("GEMINI_API_KEY"))
+# print("🔑 GEMINI_API_KEY =", os.getenv("GEMINI_API_KEY"))
 
 
 model = genai.GenerativeModel('gemini-2.0-flash') # type: ignore
