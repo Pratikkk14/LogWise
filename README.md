@@ -14,17 +14,30 @@ logwise/
 │   ├── .env                     # Env vars like API keys
 │   ├── requirements.txt         # Updated dependency list
 │   └── README.md                # Backend-specific README (optional)
+│
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── Investigation.tsx
-│   │   │   └── SessionViewer.tsx
-│   │   ├── components/
-│   │   │   ├── LogCard.tsx
-│   │   │   ├── LogTable.tsx
-│   │   │   └── ExplainPanel.tsx
-│   │   └── App.tsx
-│   ├── tailwind.config.js
-│   └── package.json
-├── README.md                    # Project-level README
+│   └── logwise-frontend/
+│       ├── public/
+│       ├── src/
+│       │   ├── components/
+│       │   │   ├── LogCard.tsx
+│       │   │   ├── LogTable.tsx
+│       │   │   └── ExplainPanel.tsx
+│       │   ├── pages/
+│       │   │   ├── Dashboard.tsx
+│       │   │   ├── Investigation.tsx
+│       │   │   └── SessionViewer.tsx
+│       │   ├── App.tsx
+│       │   └── main.tsx
+│       ├── index.html             # KEEP — required by Vite
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── vite.config.ts
+│       ├── .env                   # VITE_API_URL, etc.
+│       ├── tailwind.config.js     # Optional if using Tailwind CSS
+│       └── README.md              # Optional: frontend structure
+│
+├── venv/                          # Python virtual environment
+├── .gitignore
+├── README.md                      # Root README for contributors
+├── LICENSE
