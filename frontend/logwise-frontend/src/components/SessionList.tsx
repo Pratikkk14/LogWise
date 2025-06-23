@@ -10,9 +10,10 @@ type Session = {
 
 type Props = {
   sessions: Session[];
+  onResume: (sessionId: string) => void;
 };
 
-const SessionList = ({ sessions }: Props) => (
+const SessionList = ({ sessions, onResume }: Props) => (
   <div className="sticky top-8">
     <h2 className="text-xl font-bold text-slate-900 mb-6">Recent Sessions</h2>
     <div className="space-y-3">
@@ -22,7 +23,11 @@ const SessionList = ({ sessions }: Props) => (
         </div>
       ) : (
         sessions.map((session) => (
-          <SessionCard key={session.id} session={session} />
+          <SessionCard
+            key={session.id}
+            session={session}
+            onResume={() => onResume(session.id)}
+          />
         ))
       )}
     </div>
