@@ -19,8 +19,8 @@ const TopNavBar = () => (
           <span className="text-sm font-medium text-slate-700">john@company.com</span>
         </div>
         <button className="flex items-center space-x-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
-          <LogOut className="w-4 h-4 text-white" />
-          <span className="text-white">Logout</span>
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
         </button>
       </div>
     </div>
