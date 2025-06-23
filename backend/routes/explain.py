@@ -4,7 +4,7 @@ from services.llm_explainer import get_llm_explanation
 
 router = APIRouter()
 
-@router.post("")
+@router.post("/")
 def explain_log(req: ExplainRequest):
     try:
         explanation = get_llm_explanation(req.log_message, req.project_description)

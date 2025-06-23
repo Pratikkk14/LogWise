@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Query
 from services.gcp_logging import fetch_logs
-
 router = APIRouter()
 
-@router.get("")
+@router.get("/")
 def get_logs(
     start_minutes_ago: int = Query(60),
     end_minutes_ago: int = Query(0),

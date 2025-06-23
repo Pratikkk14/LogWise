@@ -1,88 +1,110 @@
-import React, { useState } from 'react';
-import { getLogs } from  '../../services/api'; 
-import { Plus, LogOut, Play, Trash2, Calendar, Clock, CheckCircle, Loader, Server, User } from 'lucide-react';
-import TopNavBar from '.././components/topNavBar';
-import GCPProjectCard from '.././components/GCPProjectCard';
-import SessionList from '.././components/Sessionlist';
-import FloatingActionButton from '.././components/FloatingActionButton';
+import React, { useState, useEffect } from 'react';
+import { dashboardAPI } from '../../services/api'; // Updated import
+import TopNavBar from '../components/topNavBar';
+import GCPProjectCard from '../components/GCPProjectCard';
+import SessionList from '../components/SessioList'; // Fixed typo
+import FloatingActionButton from '../components/FloatingActionButton';
+
+type Project = {
+  id: string;
+  name: string;
+  projectId: string;
+  lastAnalyzed: string;
+  status: string;
+};
+
+type Session = {
+  id: string;
+  name: string;
+  timeRange: string;
+  status: string;
+  project: string;
+};
 
 const Dashboard = () => {
-  const [projects] = useState([
-    {
-      id: 'proj-1',
-      name: 'Production API',
-      projectId: 'my-app-prod-123456',
-      lastAnalyzed: '2 hours ago',
-      status: 'active'
-    },
-    {
-      id: 'proj-2',
-      name: 'Staging Environment',
-      projectId: 'my-app-staging-789012',
-      lastAnalyzed: '1 day ago',
-      status: 'active'
-    },
-    {
-      id: 'proj-3',
-      name: 'Development Logs',
-      projectId: 'my-app-dev-345678',
-      lastAnalyzed: '3 days ago',
-      status: 'inactive'
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use the new API service
+        const [projectsData, sessionsData] = await Promise.all([
+          dashboardAPI.getProjects(),
+          dashboardAPI.getSessions()
+        ]);
+        
+        setProjects(projectsData); // API service already returns data
+        setSessions(sessionsData); // API service already returns data
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleStartInvestigation = async (projectId: string) => {
+    try {
+      const response = await dashboardAPI.startSession(projectId);
+      const sessionId = response.sessionId;
+      
+      // Update sessions list with new session
+      const updatedSessions = await dashboardAPI.getSessions();
+      setSessions(updatedSessions);
+      
+      // Navigate to session page
+      window.location.href = `/session/${sessionId}`;
+    } catch (err) {
+      console.error('Failed to start session:', err);
+      setError('Failed to start investigation session. Please try again.');
     }
-  ]);
+  };
 
-  const [sessions] = useState([
-    {
-      id: 'sess-1',
-      name: 'API Error Investigation',
-      timeRange: '2024-06-19 14:00 - 16:30',
-      status: 'completed',
-      project: 'Production API'
-    },
-    {
-      id: 'sess-2',
-      name: 'Performance Analysis',
-      timeRange: '2024-06-18 09:15 - 11:45',
-      status: 'in-progress',
-      project: 'Staging Environment'
-    },
-    {
-      id: 'sess-3',
-      name: 'Auth Flow Debug',
-      timeRange: '2024-06-17 13:20 - 15:00',
-      status: 'completed',
-      project: 'Production API'
-    },
-    {
-      id: 'sess-4',
-      name: 'Database Query Optimization',
-      timeRange: '2024-06-16 10:30 - 12:15',
-      status: 'completed',
-      project: 'Development Logs'
-    }
-  ]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <TopNavBar />
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-600">Loading dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // const getStatusIcon = (status) => {
-  //   switch (status) {
-  //     case 'completed':
-  //       return <CheckCircle className="w-4 h-4 text-green-500" />;
-  //     case 'in-progress':
-  //       return <Loader className="w-4 h-4 text-blue-500 animate-spin" />;
-  //     default:
-  //       return <Clock className="w-4 h-4 text-gray-400" />;
-  //   }
-  // };
-
-  // const getStatusColor = (status) => {
-  //   switch (status) {
-  //     case 'completed':
-  //       return 'text-green-600 bg-green-50 border-green-200';
-  //     case 'in-progress':
-  //       return 'text-blue-600 bg-blue-50 border-blue-200';
-  //     default:
-  //       return 'text-gray-600 bg-gray-50 border-gray-200';
-  //   }
-  // };
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <TopNavBar />
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -98,9 +120,19 @@ const Dashboard = () => {
             </div>
             
             <div className="space-y-4">
-              {projects.map((project) => (
-                <GCPProjectCard key={project.id} project={project} />
-              ))}
+              {projects.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  No projects connected yet. Use the + button to add one.
+                </div>
+              ) : (
+                projects.map((project) => (
+                  <GCPProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    onStart={() => handleStartInvestigation(project.projectId)}
+                  />
+                ))
+              )}
             </div>
           </div>
 

@@ -1,17 +1,20 @@
 from fastapi import FastAPI
-from dotenv import load_dotenv
-
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# Include routes
+from routes.dashboard import router as dashboard_route
+from routes.logs import router as logs_router
+from routes.explain import router as explain_router
+
 app = FastAPI()
 
-# Allow requests from your React frontend (e.g. localhost:3000)
 origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:8000",
     # Add production frontend URL here if deployed
 ]
 
@@ -23,9 +26,7 @@ app.add_middleware(
     allow_headers=["*"],            # <- allow all headers including Authorization
 )
 
-# Include routes
-from routes.logs import router as logs_router
-from routes.explain import router as explain_router
-
+# Register routers
 app.include_router(logs_router, prefix="/logs")
 app.include_router(explain_router, prefix="/explain")
+app.include_router(dashboard_route, prefix="/dashboard")

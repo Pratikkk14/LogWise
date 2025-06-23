@@ -1,6 +1,18 @@
 import { Trash2, Clock, CheckCircle, Loader } from 'lucide-react';
 
-const getStatusIcon = (status) => {
+type Session = {
+  id: string;
+  name: string;
+  timeRange: string;
+  status: string;
+  project: string;
+};
+
+type Props = {
+  session: Session;
+};
+
+const getStatusIcon = (status: string) => {
   switch (status) {
     case 'completed':
       return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -11,7 +23,7 @@ const getStatusIcon = (status) => {
   }
 };
 
-const getStatusColor = (status) => {
+const getStatusColor = (status: string) => {
   switch (status) {
     case 'completed':
       return 'text-green-600 bg-green-50 border-green-200';
@@ -22,7 +34,7 @@ const getStatusColor = (status) => {
   }
 };
 
-const SessionCard = ({ session }) => (
+const SessionCard = ({ session }: Props) => (
   <div className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md transition-shadow">
     <div className="flex items-start justify-between mb-3">
       <h4 className="text-sm font-semibold text-slate-900 leading-tight">
@@ -41,11 +53,11 @@ const SessionCard = ({ session }) => (
     </div>
 
     <div className="flex items-center space-x-2">
-      <button className="flex-1 bg-slate-100 hover:bg-slate-200 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+      <button className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded text-xs font-medium transition-colors">
         Resume
       </button>
       <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
-        <Trash2 className="w-3.5 h-3.5 text-white" />
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
     </div>
   </div>
