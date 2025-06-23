@@ -10,6 +10,7 @@ type Session = {
 
 type Props = {
   session: Session;
+  onResume: () => void;
 };
 
 const getStatusIcon = (status: string) => {
@@ -34,7 +35,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const SessionCard = ({ session }: Props) => (
+const SessionCard = ({ session, onResume }: Props) => (
   <div className="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md transition-shadow">
     <div className="flex items-start justify-between mb-3">
       <h4 className="text-sm font-semibold text-slate-900 leading-tight">
@@ -53,7 +54,10 @@ const SessionCard = ({ session }: Props) => (
     </div>
 
     <div className="flex items-center space-x-2">
-      <button className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded text-xs font-medium transition-colors">
+      <button
+        onClick={onResume}
+        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+      >
         Resume
       </button>
       <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">

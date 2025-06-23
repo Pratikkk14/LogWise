@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardAPI } from '../../services/api'; // Updated import
+import { useNavigate } from 'react-router-dom';
+import { dashboardAPI } from '../../services/api';
 import TopNavBar from '../components/topNavBar';
 import GCPProjectCard from '../components/GCPProjectCard';
-import SessionList from '../components/SessioList'; // Fixed typo
+import SessionList from '../components/SessionList';
 import FloatingActionButton from '../components/FloatingActionButton';
 
 type Project = {
@@ -22,27 +23,28 @@ type Session = {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [startingSession, setStartingSession] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Use the new API service
         const [projectsData, sessionsData] = await Promise.all([
           dashboardAPI.getProjects(),
           dashboardAPI.getSessions()
         ]);
         
-        setProjects(projectsData); // API service already returns data
-        setSessions(sessionsData); // API service already returns data
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        setProjects(projectsData);
+        setSessions(sessionsData);
+      } catch (e) {
+        console.error('Error loading dashboard data:', e);
         setError('Failed to load dashboard data. Please try again.');
       } finally {
         setLoading(false);
@@ -54,6 +56,9 @@ const Dashboard = () => {
 
   const handleStartInvestigation = async (projectId: string) => {
     try {
+      setStartingSession(projectId);
+      setError(null);
+      
       const response = await dashboardAPI.startSession(projectId);
       const sessionId = response.sessionId;
       
@@ -61,12 +66,18 @@ const Dashboard = () => {
       const updatedSessions = await dashboardAPI.getSessions();
       setSessions(updatedSessions);
       
-      // Navigate to session page
-      window.location.href = `/session/${sessionId}`;
-    } catch (err) {
-      console.error('Failed to start session:', err);
+      // Navigate to investigation session page
+      navigate(`/investigation/${sessionId}`);
+    } catch (e) {
+      console.error('Failed to start session:', e);
       setError('Failed to start investigation session. Please try again.');
+    } finally {
+      setStartingSession(null);
     }
+  };
+
+  const handleResumeSession = (sessionId: string) => {
+    navigate(`/investigation/${sessionId}`);
   };
 
   if (loading) {
@@ -126,10 +137,11 @@ const Dashboard = () => {
                 </div>
               ) : (
                 projects.map((project) => (
-                  <GCPProjectCard 
-                    key={project.id} 
-                    project={project} 
+                  <GCPProjectCard
+                    key={project.id}
+                    project={project}
                     onStart={() => handleStartInvestigation(project.projectId)}
+                    isStarting={startingSession === project.projectId}
                   />
                 ))
               )}
@@ -138,7 +150,7 @@ const Dashboard = () => {
 
           {/* Sessions Sidebar */}
           <div className="lg:col-span-1">
-            <SessionList sessions={sessions} />
+            <SessionList sessions={sessions} onResume={handleResumeSession} />
           </div>
         </div>
       </div>
