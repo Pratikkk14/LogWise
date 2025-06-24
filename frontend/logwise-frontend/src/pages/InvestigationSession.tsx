@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { logsAPI, explainAPI, dashboardAPI } from '../../services/api'
 import type { LogEntry } from '../../services/api';
+import type { RangeKey } from '../components/useChartData'
+import { useChartData } from '../components/useChartData'
 import {
   Save,
   Search,
@@ -83,6 +85,13 @@ const timeRangeToMinutes: Record<string, number> = {
   'last-7d': 10080,
 };
 
+const rangeBuckets: Record<string, number> = {
+  'last-1h':  1,
+  'last-6h':  6,
+  'last-24h': 24,
+  'last-7d':   7,
+}
+
 const InvestigationSession = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -91,7 +100,7 @@ const InvestigationSession = () => {
   const [sessionData, setSessionData] = useState<any>(null);
 
   // filters & data
-  const [selectedTimeRange, setSelectedTimeRange] = useState('last-24h');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<RangeKey>('last-24h')
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>(['ERROR', 'WARNING']);
   const [logs, setLogs] = useState<ProcessedLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +116,8 @@ const InvestigationSession = () => {
   const [hoveredLog, setHoveredLog] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string>('');
   const [explainLoading, setExplainLoading] = useState(false);
+
+
 
   // Load session metadata
   useEffect(() => {
@@ -241,7 +252,7 @@ const InvestigationSession = () => {
     return hours;
   };
 
-  const chartData = generateChartData();
+  const chartData = useChartData(filteredLogs, selectedTimeRange)
 
   if (loading) {
     return (
@@ -292,14 +303,18 @@ const InvestigationSession = () => {
             <h1 className="text-xl font-bold text-white">Investigation Session</h1>
             <div className="flex items-center space-x-2">
               <Calendar className="w-4 h-4 text-slate-400" />
-              <select
+              <select 
                 value={selectedTimeRange}
-                onChange={(e) => setSelectedTimeRange(e.target.value)}
+                onChange={(e) => setSelectedTimeRange(e.target.value as RangeKey)}
                 className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+                >
+                <option value="last-5m">Last 5 minutes</option>
+                <option value="last-15m">Last 15 minutes</option>
+                <option value="last-30m">Last 30 minutes</option>
                 <option value="last-1h">Last 1 hour</option>
                 <option value="last-6h">Last 6 hours</option>
                 <option value="last-24h">Last 24 hours</option>
+                <option value="yesterday">Yesterday</option>
                 <option value="last-7d">Last 7 days</option>
               </select>
             </div>
