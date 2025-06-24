@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Any, Dict, Optional
 
 class ExplainRequest(BaseModel):
     log_message: str
@@ -25,3 +25,12 @@ class StartSessionRequest(BaseModel):
 class StartSessionResponse(BaseModel):
     sessionId: str
 
+class LogEntry(BaseModel):
+    timestamp: str
+    severity: str
+    message: Any
+    resource_type: str
+    labels: Dict[str, str]
+
+class LogsResponse(BaseModel):
+    logs: List[LogEntry]

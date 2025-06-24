@@ -35,7 +35,8 @@ const Dashboard = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
+
         const [projectsData, sessionsData] = await Promise.all([
           dashboardAPI.getProjects(),
           dashboardAPI.getSessions()
@@ -61,8 +62,8 @@ const Dashboard = () => {
       
       const response = await dashboardAPI.startSession(projectId);
       const sessionId = response.sessionId;
-      
-      // Update sessions list with new session
+
+      // Refresh sessions
       const updatedSessions = await dashboardAPI.getSessions();
       setSessions(updatedSessions);
       
