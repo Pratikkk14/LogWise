@@ -91,7 +91,7 @@ export function useChartData(
       
       if (idx >= 0 && idx < buckets.length) {
         buckets[idx].total++
-        buckets[idx][log.severity]++
+        (buckets[idx] as any)[log.severity]++
         
         if (log.severity === 'ERROR' || log.severity === 'CRITICAL') {
           buckets[idx].errors++
