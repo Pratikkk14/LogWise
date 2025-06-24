@@ -417,31 +417,54 @@ const InvestigationSession = () => {
         <div className={`flex-1 flex flex-col overflow-hidden ${rightPanelOpen ? 'mr-96' : ''}`}>
           <div className="bg-slate-800 border-b border-slate-700 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Log Volume Over Time (Last 24 Hours)</h3>
-            <div className="h-32 bg-slate-900 rounded-lg p-4 flex items-end space-x-1">
-              {chartData.map((data, index) => (
-                <div
-                  key={index}
-                  className="flex-1 flex flex-col items-center cursor-pointer group"
-                  style={{ height: '100%' }}
-                >
-                  <div className="flex flex-col justify-end h-full w-full space-y-0.5">
-                    <div
-                      className="bg-red-500 rounded-t opacity-80 group-hover:opacity-100 transition-opacity"
-                      style={{ height: `${Math.max((data.errors / 10) * 80, 2)}%` }}
-                      title={`Errors: ${data.errors}`}
-                    ></div>
-                    <div
-                      className="bg-yellow-500 opacity-80 group-hover:opacity-100 transition-opacity"
-                      style={{ height: `${Math.max((data.warnings / 10) * 60, 2)}%` }}
-                      title={`Warnings: ${data.warnings}`}
-                    ></div>
-                  </div>
-                  <span className="text-xs text-slate-400 mt-1">{data.hour}h</span>
+            {/* Legend */}
+            <div className="flex space-x-4 mb-2">
+              {severityOptions.map(sev => (
+                <div key={sev.value} className="flex items-center space-x-1">
+                  <span className={`inline-block w-3 h-3 rounded ${sev.color}`}></span>
+                  <span className="text-xs text-slate-400">{sev.label}</span>
                 </div>
-              ))}
+            ))}
+            </div>
+            {/* Stacked Bar Chart */}
+            <div className="h-32 bg-slate-900 rounded-lg p-4 flex items-end space-x-1">
+              {chartData.map((data, index) => {
+                // Find the max total for scaling
+                const maxTotal = Math.max(...chartData.map(bucket =>
+                  severityOptions.reduce((sum, sev) => sum + ((bucket as any)[sev.value] || 0), 0)
+                ), 1);
+
+                let barSegments = [];
+                for (const sev of severityOptions) {
+                  const count = (data as any)[sev.value] || 0;
+                  if (count > 0) {
+                    barSegments.push(
+                      <div
+                        key={sev.value}
+                        className={`${sev.color} w-full`}
+                        style={{ height: `${Math.max((count / maxTotal) * 80, 2)}%` }}
+                        title={`${sev.label}: ${count}`}
+                      ></div>
+                    );
+                  }
+                }
+
+                return (
+                  <div
+                    key={index}
+                    className="flex-1 flex flex-col items-center cursor-pointer group"
+                    style={{ height: '100%' }}
+                  >
+                    <div className="flex flex-col justify-end h-full w-full">
+                      {barSegments}
+                    </div>
+                    <span className="text-xs text-slate-400 mt-1">{data.label}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          {/* End of TimelineChart */}
+        {/* End of TimelineChart */}
 
           {/* Log List */}
           <div className="flex-1 overflow-y-auto bg-slate-900">
