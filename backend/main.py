@@ -9,6 +9,7 @@ load_dotenv()
 from routes.dashboard import router as dashboard_route
 from routes.logs import router as logs_router
 from routes.explain import router as explain_router
+from routes.investigation import router as investigation_router
 
 app = FastAPI()
 
@@ -30,3 +31,4 @@ app.add_middleware(
 app.include_router(logs_router, prefix="/logs")
 app.include_router(explain_router, prefix="/explain")
 app.include_router(dashboard_route, prefix="/dashboard")
+app.include_router(investigation_router, prefix="/investigation")

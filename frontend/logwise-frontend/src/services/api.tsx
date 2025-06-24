@@ -83,4 +83,32 @@ export const healthCheck = (): Promise<boolean> =>
     .then(() => true)
     .catch(() => false)
 
+export interface LogsResponse {
+    logs: LogEntry[];
+  }
+
+// new investigation namespace
+export const investigationAPI = {
+    getSession: async (sessionId: string) => {
+      const resp = await api.get(`/investigation/${sessionId}`)
+      return resp.data as any  // or a proper Session type
+    },
+    getLogs: async (
+      sessionId: string,
+      startMinutesAgo: number = 60,
+      endMinutesAgo: number = 0,
+      severity?: string
+      ) => {
+      const params = new URLSearchParams({
+        start_minutes_ago: startMinutesAgo.toString(),
+        end_minutes_ago: endMinutesAgo.toString(),
+      })
+      if (severity) params.append("severity", severity)
+      const resp = await api.get(
+        `/investigation/${sessionId}/logs?${params.toString()}`
+      )
+    return resp.data as { logs: any[] }
+  }
+}
+
 export default api

@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { investigationAPI } from '../../services/api';
+import { logsAPI, explainAPI, dashboardAPI } from '../../services/api'
 import type { LogEntry } from '../../services/api';
-import { 
-  Save, 
-  Search, 
-  Filter, 
-  Clock, 
-  ChevronDown, 
-  ChevronRight, 
-  HelpCircle, 
-  PanelRightOpen, 
+import {
+  Save,
+  Search,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  HelpCircle,
+  PanelRightOpen,
   PanelRightClose,
   Calendar,
   BarChart3,
@@ -19,10 +18,42 @@ import {
   Info,
   AlertTriangle,
   X,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
-import { logsAPI, explainAPI, dashboardAPI } from '../../services/api';
-import type { LogsResponse, ExplainResponse } from '../../services/api';
+
+/**
+ * Build a one‐line “title” from the GCP protoPayload if present.
+ * Falls back to the very first non-empty line of the message.
+ */
+function extractShortMessage(log: LogEntry): string {
+  const msg = log.message as any;
+  if (msg?.protoPayload) {
+    const p = msg.protoPayload;
+    const service = p.serviceName || 'unknownService';
+    const method = p.methodName || 'unknownMethod';
+    const resource = p.resourceName ?? p.resource?.name ?? 'unknownResource';
+    const principal = p.authenticationInfo?.principalEmail || 'unknownUser';
+    return `${service}.${method} on ${resource} by ${principal}`;
+  }
+  let raw =
+    typeof log.message === 'string'
+      ? log.message
+      : JSON.stringify(log.message, null, 0);
+  const firstLine = raw.split('\n').find((l) => l.trim().length > 0) ?? '';
+  return firstLine.length > 80 ? firstLine.slice(0, 80) + '…' : firstLine;
+}
+
+/** Return the entire log payload as indented JSON or raw string. */
+function formatFullMessage(log: LogEntry): string {
+  if (typeof log.message === 'string') {
+    return log.message;
+  }
+  try {
+    return JSON.stringify(log.message, null, 2);
+  } catch {
+    return String(log.message);
+  }
+}
 
 interface ProcessedLog {
   id: string;
@@ -34,112 +65,98 @@ interface ProcessedLog {
   labels: Record<string, string>;
 }
 
+const severityOptions = [
+  { value: 'CRITICAL', label: 'Critical', color: 'bg-red-600', icon: AlertCircle },
+  { value: 'ERROR', label: 'Error', color: 'bg-red-500', icon: AlertCircle },
+  { value: 'WARNING', label: 'Warning', color: 'bg-yellow-500', icon: AlertTriangle },
+  { value: 'EMERGENCY', label: 'Emergency', color: 'bg-red-800', icon: AlertCircle },
+  { value: 'DEBUG', label: 'Debug', color: 'bg-gray-500', icon: Info },
+  { value: 'INFO', label: 'Info', color: 'bg-blue-500', icon: Info },
+  { value: 'ALERT', label: 'Alert', color: 'bg-red-700', icon: AlertCircle },
+  { value: 'NOTICE', label: 'Notice', color: 'bg-blue-400', icon: Info }
+];
+
+const timeRangeToMinutes: Record<string, number> = {
+  'last-1h': 60,
+  'last-6h': 360,
+  'last-24h': 1440,
+  'last-7d': 10080,
+};
+
 const InvestigationSession = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  
+
+  // session info
+  const [sessionData, setSessionData] = useState<any>(null);
+
+  // filters & data
   const [selectedTimeRange, setSelectedTimeRange] = useState('last-24h');
+  const [selectedSeverities, setSelectedSeverities] = useState<string[]>(['ERROR', 'WARNING']);
+  const [logs, setLogs] = useState<ProcessedLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // UI state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSeverities, setSelectedSeverities] = useState(['ERROR', 'WARNING']);
   const [viewMode, setViewMode] = useState('timeline');
-  const [expandedLogs, setExpandedLogs] = useState(new Set());
+  const [expandedLogs, setExpandedLogs] = useState(new Set<string>());
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [selectedLogForExplain, setSelectedLogForExplain] = useState<ProcessedLog | null>(null);
   const [personalNotes, setPersonalNotes] = useState('');
   const [hoveredLog, setHoveredLog] = useState<string | null>(null);
-  
-  // Data states
-  const [logs, setLogs] = useState<ProcessedLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string>('');
   const [explainLoading, setExplainLoading] = useState(false);
-  const [sessionData, setSessionData] = useState<any>(null);
 
-  const severityOptions = [
-    { value: 'CRITICAL', label: 'Critical', color: 'bg-red-600', icon: AlertCircle },
-    { value: 'ERROR', label: 'Error', color: 'bg-red-500', icon: AlertCircle },
-    { value: 'WARNING', label: 'Warning', color: 'bg-yellow-500', icon: AlertTriangle },
-    { value: 'INFO', label: 'Info', color: 'bg-blue-500', icon: Info },
-    { value: 'DEBUG', label: 'Debug', color: 'bg-gray-500', icon: Info }
-  ];
-
-  const timeRangeToMinutes = {
-    'last-1h': 60,
-    'last-6h': 360,
-    'last-24h': 1440,
-    'last-7d': 10080,
-    'custom': 1440
-  };
-
+  // Load session metadata
   useEffect(() => {
-    fetchLogs();
-  }, [selectedTimeRange, selectedSeverities]);
+    if (!sessionId) return;
+     dashboardAPI.getSessions()
+                 .then(all => {
+     const ses = all.find((s) => s.id === sessionId)
+     if (!ses) throw new Error('Invalid session')
+     setSessionData(ses)
+   })
+    .then(setSessionData)
+    .catch(() => setError('Invalid session'))
+}, [sessionId])
 
-  const fetchLogs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const minutes = timeRangeToMinutes[selectedTimeRange as keyof typeof timeRangeToMinutes] || 1440;
-      
-      // If specific severities are selected, fetch for each severity
-      let allLogs: LogEntry[] = [];
-      
-      if (selectedSeverities.length > 0) {
-        const logPromises = selectedSeverities.map(severity => 
-          logsAPI.getLogs(minutes, 0, severity)
+  // Load logs when filters change
+  useEffect(() => {
+    if (!sessionId) return;
+    const minutes = timeRangeToMinutes[selectedTimeRange] ?? 1440;
+    setLoading(true);
+    setError(null);
+
+    const calls = selectedSeverities.length > 0 
+    ? selectedSeverities.map((s) => 
+      logsAPI.getLogs(minutes, 0, s) ) 
+    : [logsAPI.getLogs(minutes, 0)]
+
+    Promise.all(calls)
+      .then((responses) => {
+        const all: LogEntry[] = responses.flatMap((r) => r.logs);
+        const processed: ProcessedLog[] = all.map((log, idx) => ({
+          id: `log-${idx}-${log.timestamp}`,
+          timestamp: log.timestamp,
+          severity: log.severity,
+          shortMessage: extractShortMessage(log),
+          fullMessage: formatFullMessage(log),
+          resourceType: log.resource_type,
+          labels: log.labels,
+        }));
+        processed.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
-        
-        const responses = await Promise.all(logPromises);
-        allLogs = responses.flatMap(response => response.logs);
-      } else {
-        const response = await logsAPI.getLogs(minutes, 0);
-        allLogs = response.logs;
-      }
-      
-      // Process logs for display
-      const processedLogs: ProcessedLog[] = allLogs.map((log, index) => ({
-        id: `log-${index}-${log.timestamp}`,
-        timestamp: log.timestamp,
-        severity: log.severity,
-        shortMessage: extractShortMessage(log.message),
-        fullMessage: formatFullMessage(log.message),
-        resourceType: log.resource_type,
-        labels: log.labels
-      }));
-      
-      // Sort by timestamp (newest first)
-      processedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
-      setLogs(processedLogs);
-    } catch (err) {
-      console.error('Error fetching logs:', err);
-      setError('Failed to fetch logs. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const extractShortMessage = (message: any): string => {
-    if (typeof message === 'string') {
-      return message.split('\n')[0].substring(0, 100);
-    } else if (typeof message === 'object' && message !== null) {
-      if (message.message) return message.message.substring(0, 100);
-      if (message.textPayload) return message.textPayload.substring(0, 100);
-      return JSON.stringify(message).substring(0, 100);
-    }
-    return 'Unknown log format';
-  };
-
-  const formatFullMessage = (message: any): string => {
-    if (typeof message === 'string') {
-      return message;
-    } else if (typeof message === 'object' && message !== null) {
-      return JSON.stringify(message, null, 2);
-    }
-    return 'Unknown log format';
-  };
+        setLogs(processed);
+      })
+      .catch((e) => {
+        console.error(e);
+        setError('Failed to fetch logs');
+      })
+      .finally(() => setLoading(false));
+  }, [sessionId, selectedTimeRange, selectedSeverities]);
 
   const toggleLogExpansion = (logId: string) => {
     const newExpanded = new Set(expandedLogs);
@@ -155,16 +172,15 @@ const InvestigationSession = () => {
     setSelectedLogForExplain(log);
     setRightPanelOpen(true);
     setExplainLoading(true);
-    
+
     try {
-      const response = await explainAPI.explainLog(
+      const resp = await explainAPI.explainLog(
         log.fullMessage,
-        'Cloud application logs investigation'
+        sessionData?.project || ''
       );
-      setExplanation(response.explanation);
-    } catch (err) {
-      console.error('Error explaining log:', err);
-      setExplanation('Failed to get explanation. Please try again.');
+      setExplanation(resp.explanation);
+    } catch {
+      setExplanation('Failed to get explanation');
     } finally {
       setExplainLoading(false);
     }
@@ -180,23 +196,22 @@ const InvestigationSession = () => {
     return option ? option.color : 'bg-gray-500';
   };
 
-const formatTimestamp = (timestamp: string) => {
-  const date = new Date(timestamp);
-  const milliseconds = date.getMilliseconds();
-  const fractionalSeconds = `${milliseconds.toString().padStart(3, '0')}`;
-  return `${date.toLocaleTimeString('en-US', {
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })}.${fractionalSeconds}`;
-};
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const milliseconds = date.getMilliseconds();
+    const fractionalSeconds = `${milliseconds.toString().padStart(3, '0')}`;
+    return `${date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })}.${fractionalSeconds}`;
+  };
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       log.shortMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.fullMessage.toLowerCase().includes(searchQuery.toLowerCase());
-    
     return matchesSearch;
   });
 
@@ -212,7 +227,7 @@ const formatTimestamp = (timestamp: string) => {
     filteredLogs.forEach(log => {
       const logHour = new Date(log.timestamp).getHours();
       const hourData = hours[logHour];
-      
+
       if (hourData) {
         hourData.total++;
         if (log.severity === 'ERROR' || log.severity === 'CRITICAL') {
@@ -244,14 +259,14 @@ const formatTimestamp = (timestamp: string) => {
       <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error}</p>
-          <button 
-            onClick={fetchLogs} 
+          <button
+            onClick={() => window.location.reload()}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mr-4"
           >
             Retry
           </button>
-          <button 
-            onClick={() => navigate('/dashboard')} 
+          <button
+            onClick={() => navigate('/dashboard')}
             className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg"
           >
             Back to Dashboard
@@ -277,7 +292,7 @@ const formatTimestamp = (timestamp: string) => {
             <h1 className="text-xl font-bold text-white">Investigation Session</h1>
             <div className="flex items-center space-x-2">
               <Calendar className="w-4 h-4 text-slate-400" />
-              <select 
+              <select
                 value={selectedTimeRange}
                 onChange={(e) => setSelectedTimeRange(e.target.value)}
                 className="bg-slate-700 border border-slate-600 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -289,7 +304,7 @@ const formatTimestamp = (timestamp: string) => {
               </select>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <span className="text-sm text-slate-400">
               {filteredLogs.length} logs found
@@ -303,7 +318,7 @@ const formatTimestamp = (timestamp: string) => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
+        {/* Sidebar */}
         <div className="w-80 bg-slate-800 border-r border-slate-700 p-6 overflow-y-auto">
           <div className="space-y-6">
             {/* Search */}
@@ -358,8 +373,8 @@ const formatTimestamp = (timestamp: string) => {
                 <button
                   onClick={() => setViewMode('timeline')}
                   className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded text-sm font-medium transition-colors ${
-                    viewMode === 'timeline' 
-                      ? 'bg-blue-600 text-white' 
+                    viewMode === 'timeline'
+                      ? 'bg-blue-600 text-white'
                       : 'text-slate-300 hover:text-white'
                   }`}
                 >
@@ -369,8 +384,8 @@ const formatTimestamp = (timestamp: string) => {
                 <button
                   onClick={() => setViewMode('grouped')}
                   className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded text-sm font-medium transition-colors ${
-                    viewMode === 'grouped' 
-                      ? 'bg-blue-600 text-white' 
+                    viewMode === 'grouped'
+                      ? 'bg-blue-600 text-white'
                       : 'text-slate-300 hover:text-white'
                   }`}
                 >
@@ -381,10 +396,10 @@ const formatTimestamp = (timestamp: string) => {
             </div>
           </div>
         </div>
+        {/* End of Sidebar */}
 
-        {/* Main Content Area */}
+        {/* Timeline Chart */}
         <div className={`flex-1 flex flex-col overflow-hidden ${rightPanelOpen ? 'mr-96' : ''}`}>
-          {/* Chart/Timeline */}
           <div className="bg-slate-800 border-b border-slate-700 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Log Volume Over Time (Last 24 Hours)</h3>
             <div className="h-32 bg-slate-900 rounded-lg p-4 flex items-end space-x-1">
@@ -411,6 +426,7 @@ const formatTimestamp = (timestamp: string) => {
               ))}
             </div>
           </div>
+          {/* End of TimelineChart */}
 
           {/* Log List */}
           <div className="flex-1 overflow-y-auto bg-slate-900">
@@ -458,7 +474,7 @@ const formatTimestamp = (timestamp: string) => {
                               )}
                               <span className="text-slate-300 truncate">{log.shortMessage}</span>
                             </button>
-                            
+
                             {isHovered && (
                               <button
                                 onClick={() => handleExplainLog(log)}
@@ -493,9 +509,10 @@ const formatTimestamp = (timestamp: string) => {
               )}
             </div>
           </div>
+          {/* End of LogList */}
         </div>
 
-        {/* Right Panel */}
+        {/* Explanation Panel */}
         {rightPanelOpen && (
           <div className="fixed right-0 top-16 bottom-0 w-96 bg-slate-800 border-l border-slate-700 flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slate-700">
@@ -539,6 +556,7 @@ const formatTimestamp = (timestamp: string) => {
             </div>
           </div>
         )}
+        {/* End of ExplanationPanel */}
       </div>
 
       {/* Right Panel Toggle Button */}
@@ -552,6 +570,7 @@ const formatTimestamp = (timestamp: string) => {
           <PanelRightOpen className="w-5 h-5 text-slate-300" />
         )}
       </button>
+      {/* End of right panel toggle button */}
     </div>
   );
 };
