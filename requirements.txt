@@ -1,7 +1,11 @@
 fastapi
 uvicorn
-google-cloud-logging
-pydantic
+python-multipart
 python-dotenv
+google-cloud-bigquery
+google-cloud-storage
+google-cloud-secret-manager
+google-cloud-logging
+google-generativeai
+pydantic
 protobuf
-google-generative
