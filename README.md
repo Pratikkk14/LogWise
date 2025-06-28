@@ -83,6 +83,7 @@ Although LogWise currently runs locally, the platform is fully integrated with r
 - Connected project and session management using **BigQuery**
 - Secure **service key upload and storage** in Google Cloud Storage
 - Secrets handled securely via **Secret Manager**
+- Extensively used IAM to allow only service accounts for accessing the platform and added a degree of security
 
 > 🔧 All major GCP integrations are complete. Only frontend/backend deployment and full mock-to-live data transition are pending, covered under future scope.
 
